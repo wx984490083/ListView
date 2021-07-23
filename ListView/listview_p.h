@@ -65,14 +65,15 @@ private:
 
     QWidget* emptyView = nullptr;
     std::vector<QWidget*> headerViews;
-    std::vector<std::vector<int>> heightsCache;
+    std::vector<int> groupHeights;
+    std::vector<std::vector<int>> itemHeights;
     int contentHeight;
 
     void clear();
     void reload();
 
     void cacheHeaders();
-    int cacheGeometriesAndAnchorPos(const ListIndex &anchorIndex = ListIndex());
+    int cacheHeightsAndAnchorPos(const ListIndex &anchorIndex = ListIndex());
 
     void setupEmptyView();
 
@@ -93,8 +94,9 @@ private:
     void processItemSelection(const ListIndex &index);
 
     // some helper functions
-    bool hasItems();
+    bool modelNotEmpty();
     int headerHeight(int group);
+    int itemPosition(const ListIndex& index);
     ListIndex increaseIndex(const ListIndex& index);
     ListIndex decreaseIndex(const ListIndex& index);
 };

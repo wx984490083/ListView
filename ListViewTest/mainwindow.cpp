@@ -65,7 +65,7 @@ public:
     }
     int numItemsInGroup(int group) override
     {
-        return 100;
+        return 10000;
     }
 
 protected:
@@ -128,4 +128,35 @@ void MainWindow::on_pushButton_clicked()
     {
         listView->setDataModel(testModel);
     }
+}
+
+void MainWindow::on_btnScrollTo_clicked()
+{
+    auto group = ui->editGroup->text().toInt();
+    auto item = ui->editItem->text().toInt();
+    listView->scrollToItem(ListIndex(group, item));
+}
+
+void MainWindow::on_btnBottom_clicked()
+{
+    listView->scrollToBottom();
+}
+
+void MainWindow::on_btnTop_clicked()
+{
+    listView->scrollToTop();
+}
+
+void MainWindow::on_editItem_textChanged(const QString &)
+{
+    auto group = ui->editGroup->text().toInt();
+    auto item = ui->editItem->text().toInt();
+    ui->btnScrollTo->setText(QString::asprintf("Scroll To (%d,%d)", group, item));
+}
+
+void MainWindow::on_editGroup_textEdited(const QString &)
+{
+    auto group = ui->editGroup->text().toInt();
+    auto item = ui->editItem->text().toInt();
+    ui->btnScrollTo->setText(QString::asprintf("Scroll To (%d,%d)", group, item));
 }

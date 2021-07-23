@@ -13,6 +13,8 @@ bool ListIndex::operator<(const ListIndex &other) const {return group < other.gr
 
 bool ListIndex::operator==(const ListIndex &other) const {return group == other.group && item == other.item;}
 
+bool ListIndex::operator!=(const ListIndex &other) const {return group != other.group || item != other.item;}
+
 bool ListIndex::operator>(const ListIndex &other) const {return group > other.group || (group == other.group && item > other.item);}
 
 bool ListIndex::operator<=(const ListIndex &other) const {return *this < other || *this == other;}

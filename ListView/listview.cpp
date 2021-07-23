@@ -1,6 +1,7 @@
 #include "listview_p.h"
 #include "listviewitem_p.h"
 #include "listdatamodel_p.h"
+#include "listview_p.h"
 #include <QMouseEvent>
 #include <QResizeEvent>
 #include <QScrollBar>
@@ -182,21 +183,26 @@ void ListViewPriv::scrollToItem(const ListIndex &index)
         return;
     }
 
+    if (index.group < 0 || index.group >= (int)itemHeights.size()
+            || index.item < -1 || index.item >= (int)itemHeights[index.group].size())
+    {
+        // invalid index
+        return;
+    }
+
+    auto y = itemPosition(index);
+    scrollArea->verticalScrollBar()->setValue(y);
 }
 
 void ListViewPriv::scrollToTop()
 {
-    scrollToItem(ListIndex(0, ListIndex::InvalidItemIndex));
+    scrollArea->verticalScrollBar()->setValue(0);
 }
 
 void ListViewPriv::scrollToBottom()
 {
-    if (!currentModel)
-    {
-        return;
-    }
-    auto bottomIndex = currentModel->owner->maxIndex();
-    scrollToItem(bottomIndex);
+    auto vs = scrollArea->verticalScrollBar();
+    vs->setValue(vs->maximum());
 }
 
 void ListViewPriv::itemUpdated(const ListIndex &index)
@@ -287,11 +293,9 @@ void ListViewPriv::clear()
         }
     }
     loadedItems.clear();
-
     selected.clear();
-
-    heightsCache.clear();
-
+    groupHeights.clear();
+    itemHeights.clear();
     contentHeight = 0;
 
     scrollArea->verticalScrollBar()->disconnect(owner);
@@ -313,7 +317,7 @@ void ListViewPriv::reload()
     else
     {
         cacheHeaders();
-        cacheGeometriesAndAnchorPos();
+        cacheHeightsAndAnchorPos();
         fixContentSize(false);
         adjustLoadedItems();
     }
@@ -335,38 +339,42 @@ void ListViewPriv::cacheHeaders()
     }
 }
 
-int ListViewPriv::cacheGeometriesAndAnchorPos(const ListIndex& anchorIndex)
+int ListViewPriv::cacheHeightsAndAnchorPos(const ListIndex& anchorIndex)
 {
     int anchorY = 0;
     const auto width = owner->width();
     const auto nGroups = currentModel->owner->numGroups();
-    heightsCache.resize(nGroups);
+    groupHeights.resize(nGroups);
+    itemHeights.resize(nGroups);
     contentHeight = 0;
     for (auto group = 0; group < nGroups; group++)
     {
+        auto& groupHeight = groupHeights[group];
+        groupHeight = 0;
         if (anchorIndex == ListIndex(group))
         {
             anchorY = contentHeight;
         }
         auto headerView = headerViews[group];
         auto headerHeight = headerView ? headerView->height() : 0;
-        contentHeight += headerHeight;
+        groupHeight += headerHeight;
 
         const auto nItems = currentModel->owner->numItemsInGroup(group);
-        auto& groupHeights = heightsCache[group];
-        groupHeights.resize(nItems);
+        auto& groupItemHeights = itemHeights[group];
+        groupItemHeights.resize(nItems);
         for (auto item = 0; item < nItems; item++)
         {
             if (anchorIndex == ListIndex(group, item))
             {
                 anchorY = contentHeight;
             }
-            auto iemHeight = currentDelegate->heightForIndex(ListIndex(group, item), width);
-            groupHeights[item] = iemHeight;
-
-            // TODO: 这里可能需要做加法溢出判断，如果有溢出，则修改加载逻辑，不加载任何东西~
-            contentHeight += iemHeight;
+            auto itemHeight = currentDelegate->heightForIndex(ListIndex(group, item), width);
+            groupItemHeights[item] = itemHeight;
+            groupHeight += itemHeight;
         }
+
+        // TODO: 这里可能需要做加法溢出判断，如果有溢出，则修改加载逻辑，不加载任何东西~
+        contentHeight += groupHeight;
     }
 
     return anchorY;
@@ -387,7 +395,7 @@ void ListViewPriv::setupEmptyView()
 void ListViewPriv::adjustLoadedItems()
 {
     // TODO: 这里的逻辑有点儿简单粗暴，可以考虑细化一下~
-    if (hasItems())
+    if (modelNotEmpty())
     {
         unloadOutOfViewportItems();
         loadUnderItems();
@@ -433,7 +441,7 @@ void ListViewPriv::fixContentSize(bool widthChanged)
             }
         }
 
-        const auto newAnchorY = cacheGeometriesAndAnchorPos(anchorIndex);
+        const auto newAnchorY = cacheHeightsAndAnchorPos(anchorIndex);
         scrollContent->resize(width, contentHeight);
 
         if (contentHeight != scrollContent->height())
@@ -456,7 +464,7 @@ void ListViewPriv::fixContentSize(bool widthChanged)
                 auto& item = *it;
                 item.h = item.index.item == ListIndex::InvalidItemIndex
                         ? headerHeight(item.index.group)
-                        : heightsCache[item.index.group][item.index.item];
+                        : itemHeights[item.index.group][item.index.item];
                 item.y = currentY;
 
                 QWidget* view = (item.index.item == ListIndex::InvalidItemIndex)
@@ -481,7 +489,7 @@ void ListViewPriv::fixContentSize(bool widthChanged)
                 auto& item = *it;
                 item.h = item.index.item == ListIndex::InvalidItemIndex
                         ? headerHeight(item.index.group)
-                        : heightsCache[item.index.group][item.index.item];
+                        : itemHeights[item.index.group][item.index.item];
                 item.y = currentY - item.h;
 
                 QWidget* view = (item.index.item == ListIndex::InvalidItemIndex)
@@ -530,7 +538,7 @@ void ListViewPriv::loadAboveItems()
 
     int nextHeight = nextIndex.item == ListIndex::InvalidItemIndex
             ? headerHeight(nextIndex.group)
-            : heightsCache[nextIndex.group][nextIndex.item];
+            : itemHeights[nextIndex.group][nextIndex.item];
 
     auto nextY = loadedItems.empty()
             ? viewportBottom - nextHeight
@@ -570,7 +578,7 @@ void ListViewPriv::loadAboveItems()
         }
         else
         {
-            nextHeight = heightsCache[nextIndex.group][nextIndex.item];
+            nextHeight = itemHeights[nextIndex.group][nextIndex.item];
         }
         nextY -= nextHeight;
     }
@@ -592,7 +600,7 @@ void ListViewPriv::loadUnderItems()
     auto nextY = loadedItems.empty() ? 0 : loadedItems.back().y + loadedItems.back().h;
     auto nextHeight = nextIndex.item == ListIndex::InvalidItemIndex
             ? headerHeight(nextIndex.group)
-            : heightsCache[nextIndex.group][nextIndex.item];
+            : itemHeights[nextIndex.group][nextIndex.item];
 
     while (!nextIndex.isEmpty() && nextY < viewportBottom)
     {
@@ -628,7 +636,7 @@ void ListViewPriv::loadUnderItems()
         }
         else
         {
-            nextHeight = heightsCache[nextIndex.group][nextIndex.item];
+            nextHeight = itemHeights[nextIndex.group][nextIndex.item];
         }
     }
 }
@@ -671,10 +679,10 @@ void ListViewPriv::unloadOutOfViewportItems()
 ListIndex ListViewPriv::increaseIndex(const ListIndex &index)
 {
     int group, item;
-    int nItemsInGroup = (int)heightsCache[index.group].size();
+    int nItemsInGroup = (int)itemHeights[index.group].size();
     if (index.item == nItemsInGroup - 1)
     {
-        int nGroups = (int)heightsCache.size();
+        int nGroups = (int)itemHeights.size();
         if (index.group == nGroups - 1)
         {
             group = ListIndex::InvalidGroupIndex;
@@ -709,7 +717,7 @@ ListIndex ListViewPriv::decreaseIndex(const ListIndex &index)
         else
         {
             group = index.group - 1;
-            int nItemsInGroup = (int)heightsCache[group].size();
+            int nItemsInGroup = (int)itemHeights[group].size();
             item = nItemsInGroup - 1;
         }
     }
@@ -788,7 +796,7 @@ void ListViewPriv::processItemSelection(const ListIndex& index)
     }
 }
 
-bool ListViewPriv::hasItems()
+bool ListViewPriv::modelNotEmpty()
 {
     return currentModel && currentModel->owner->numGroups();
 }
@@ -797,5 +805,31 @@ int ListViewPriv::headerHeight(int group)
 {
     auto header = headerViews[group];
     int result = header ? header->height() : 0;
+    return result;
+}
+
+int ListViewPriv::itemPosition(const ListIndex &index)
+{
+    // 当前计算方式为从上往下递加
+    // TODO: 如果发现此函数调用频率很高或对UI造成了明显的影响，可建立位置缓存，用于直接搜索结果或加速计算
+    int result = 0;
+    int currentHeight = 0;
+    ListIndex currentIndex(0, ListIndex::InvalidItemIndex);
+    while (currentIndex != index)
+    {
+        if (index.group > currentIndex.group && currentIndex.item == ListIndex::InvalidItemIndex)
+        {
+            result += groupHeights[currentIndex.group];
+            currentIndex.group++;
+        }
+        else
+        {
+            currentHeight = currentIndex.item == ListIndex::InvalidItemIndex
+                    ? headerHeight(currentIndex.group)
+                    : itemHeights[currentIndex.group][currentIndex.item];
+            result += currentHeight;
+            currentIndex = increaseIndex(currentIndex);
+        }
+    }
     return result;
 }

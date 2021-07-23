@@ -18,6 +18,16 @@ public:
 private slots:
     void on_pushButton_clicked();
 
+    void on_btnScrollTo_clicked();
+
+    void on_btnBottom_clicked();
+
+    void on_btnTop_clicked();
+
+    void on_editItem_textChanged(const QString &arg1);
+
+    void on_editGroup_textEdited(const QString &arg1);
+
 private:
     class ListView* listView;
     class ListViewTestModel* testModel;

@@ -15,6 +15,7 @@ public:
     bool isEmpty() const;
     bool operator<(const ListIndex& other) const;
     bool operator==(const ListIndex& other) const;
+    bool operator!=(const ListIndex& other) const;
     bool operator>(const ListIndex& other) const;
     bool operator<=(const ListIndex& other) const;
     bool operator>=(const ListIndex& other) const;
