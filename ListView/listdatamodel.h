@@ -8,9 +8,9 @@ class ListIndex
 {
 public:
     static const int InvalidGroupIndex = -1;
-    static const int GroupHeaderIndex = -1;
+    static const int InvalidItemIndex = -1;
     ListIndex();
-    explicit ListIndex(int group, int item = GroupHeaderIndex);
+    explicit ListIndex(int group, int item = InvalidItemIndex);
     bool isHeader() const;
     bool isEmpty() const;
     bool operator<(const ListIndex& other) const;
@@ -19,7 +19,7 @@ public:
     bool operator<=(const ListIndex& other) const;
     bool operator>=(const ListIndex& other) const;
     int32_t group = InvalidGroupIndex;
-    int32_t item = GroupHeaderIndex;
+    int32_t item = InvalidItemIndex;
 };
 
 
@@ -67,7 +67,6 @@ public:
     bool isEmpty();
 
 
-    /// 以下是本类已实现的保护接口，供子类调用。
 protected:
     /**
      * 请求更多顶部数据。
@@ -85,6 +84,7 @@ protected:
      */
     virtual void onRequestMoreTailingData();
 
+    /// 以下是本类已实现的保护接口，供子类调用。
 protected:
     /**
      * 当某项数据有更新，需要界面重新加载时，调用此函数
@@ -162,6 +162,8 @@ protected:
 
 private:
     class ListDataModelPriv* priv;
+public:
+    ListDataModelPriv *getPriv() const;
 };
 
 #endif

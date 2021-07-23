@@ -2,6 +2,7 @@
 #define LISTVIEW_IMPL_HPP
 
 #include "listview.h"
+#include <QScrollArea>
 
 class ListViewItemPriv;
 
@@ -10,11 +11,16 @@ class ListViewPriv
 public:
     ListView* owner;
 
+    void setup();
+
     void processItemClick(QMouseEvent *event, const ListIndex& index, ListViewItemPriv* item);
     void setDataModel(ListDataModel* model);
     void setViewDelegate(ListViewDelegate* delegate);
+
+    ListDataModel* dataModel() const;
+    ListViewDelegate* viewDelegate() const;
+
     std::set<ListIndex> selection();
-    void setSelection(std::set<ListIndex>&& selection);
     void setSelection(const std::set<ListIndex>& selection);
     void scrollToItem(const ListIndex& index);
     void scrollToTop();
@@ -30,19 +36,67 @@ public:
     void beginRemoveGroup(int groupIndex);
     void endRemoveGroup();
 
+    void onResized(const QSize &oldSize);
+
 private:
+    struct LoadedItem
+    {
+        ListIndex index;
+        int y;
+        int h;
+        ListViewItemPriv* view;
+    };
+
+    QScrollArea* scrollArea;
+    QWidget* scrollContent;
+
     ListDataModelPriv* currentModel = nullptr;
     ListViewDelegate* currentDelegate = nullptr;
+
+    std::map<const QMetaObject*, std::list<ListViewItemPriv*>> reusePool;
+
+    /**
+     * 记录已加载的数据项视图
+     * 开发过程需要保证：其中的数据项索引是严格递增的，不会出现跳跃
+     */
+    std::list<LoadedItem> loadedItems;
+
     std::set<ListIndex> selected;
 
+    QWidget* emptyView = nullptr;
+    std::vector<QWidget*> headerViews;
     std::vector<std::vector<int>> heightsCache;
+    int contentHeight;
 
     void clear();
     void reload();
 
-    void cacheGeometries();
+    void cacheHeaders();
+    int cacheGeometriesAndAnchorPos(const ListIndex &anchorIndex = ListIndex());
 
-    void addSelection(std::set<ListIndex>&& selection);
+    void setupEmptyView();
+
+    void adjustLoadedItems();
+
+    /**
+     * ListView 尺寸改变后，对已加载的视图做一些调整
+     * 可能会改变 contentHeight，并且改变滚动条位置。
+     */
+    void fixContentSize(bool widthChanged);
+
+    void loadAboveItems();
+    void loadUnderItems();
+    void unloadOutOfViewportItems();
+
+    ListViewItemPriv* generateItemView(const ListIndex& index, int y, int height);
+
+    void processItemSelection(const ListIndex &index);
+
+    // some helper functions
+    bool hasItems();
+    int headerHeight(int group);
+    ListIndex increaseIndex(const ListIndex& index);
+    ListIndex decreaseIndex(const ListIndex& index);
 };
 
 #endif

@@ -15,7 +15,13 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
+private slots:
+    void on_pushButton_clicked();
+
 private:
+    class ListView* listView;
+    class ListViewTestModel* testModel;
+    class ListViewEmptyModel* emptyModel;
     Ui::MainWindow *ui;
 };
 #endif // MAINWINDOW_H

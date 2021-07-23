@@ -7,6 +7,7 @@ CONFIG += c++11
 
 SOURCES += \   
     $$PWD/listview/listdatamodel.cpp \
+    $$PWD/listview/listviewdelegate.cpp \
     $$PWD/listview/listview.cpp \
     $$PWD/listview/listviewitem.cpp
 

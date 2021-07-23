@@ -6,7 +6,7 @@
 
 ListViewItem::ListViewItem(QWidget *parent) : QWidget(parent), priv(new ListViewItemPriv)
 {
-
+    priv->owner = this;
 }
 
 ListViewItem::~ListViewItem()
@@ -107,7 +107,7 @@ void ListViewItem::leaveEvent(QEvent *)
 void ListViewItem::paintEvent(QPaintEvent *)
 {
     QPainter p(this);
-    auto bg = priv->hover ? QColor("#10808080") : QColor("#00000000");
+    auto bg = priv->selected ? QColor("#20808080") : priv->hover ? QColor("#10808080") : QColor("#00000000");
     p.fillRect(rect(), bg);
 
     QString text = priv->index.isHeader() ? QString::asprintf("GroupHeader %d", priv->index.group) : QString::asprintf("Row %d.%d", priv->index.group, priv->index.item);
@@ -119,4 +119,9 @@ void ListViewItem::clickEvent(QMouseEvent *e, const QPoint &)
 {
     if (priv->listView)
         priv->listView->processItemClick(e, priv->index, priv);
+}
+
+ListViewItemPriv *ListViewItem::getPriv() const
+{
+    return priv;
 }

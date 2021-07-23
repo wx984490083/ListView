@@ -5,7 +5,7 @@ ListIndex::ListIndex(){}
 
 ListIndex::ListIndex(int group, int item) : group(group), item(item) {}
 
-bool ListIndex::isHeader() const {return item == GroupHeaderIndex;}
+bool ListIndex::isHeader() const {return item == InvalidItemIndex;}
 
 bool ListIndex::isEmpty() const {return group == InvalidGroupIndex;}
 
@@ -24,6 +24,7 @@ bool ListIndex::operator>=(const ListIndex &other) const {return *this > other |
 ListDataModel::ListDataModel() : priv(new ListDataModelPriv)
 {
     priv->owner = this;
+    qDebug("this = %x, priv.addr = %x", this, &priv);
 }
 
 ListDataModel::~ListDataModel()
@@ -143,4 +144,9 @@ ListDataModelPriv::~ListDataModelPriv()
     {
         listViewPriv->setDataModel(nullptr);
     }
+}
+
+ListDataModelPriv *ListDataModel::getPriv() const
+{
+    return priv;
 }

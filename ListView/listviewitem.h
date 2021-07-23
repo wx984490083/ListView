@@ -21,6 +21,8 @@ public:
     bool selected() const;
     bool isLastItem() const;
 
+    class ListViewItemPriv *getPriv() const;
+
 public slots:
     void setHover(bool hover);
     void setPressed(bool pressed);

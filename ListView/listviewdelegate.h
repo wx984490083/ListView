@@ -10,18 +10,20 @@ class ListViewItem;
 /**
  * 定义 ListView 的数据展示
  * 注意：实现此类的接口时，应确保可以访问对应的 ListDataModel 对象以获取数据。
+ * BUG: 当前受 QWIDGETSIZE_MAX(16777215) 影响，如果数据项过多，即总高度过高，会导致后面的数据无法被显示出来
+ * TODO: 优化时将放弃使用 QScrollArea ，采用手动计算位置的方式来避免 QWIDGETSIZE_MAX 带来的影响。
  */
 class ListViewDelegate
 {
 public:
+
     /**
-     * 此函数被 ListView 用于向 ListViewDelegate 请求数据项或分组头视图的高度
-     * 请注意区分数据项和分组头~
+     * 此函数被 ListView 用于向 ListViewDelegate 请求数据项视图的高度
      * @param index 请求的数据项或分组头的索引
      * @param availableWidth ListView 提供的可用宽度
      * @return 返回高度值
      */
-    virtual int heightForIndex(const ListIndex& index, int availableWidth);
+    virtual int heightForIndex(const ListIndex& index, int availableWidth) = 0;
 
     /**
      * 请求数据项的视图类型元数据，视图类型必须从 ListItemView 继承
@@ -29,7 +31,7 @@ public:
      * @param index 请求的数据项索引
      * @return 返回用于展示对应索引的数据项的视图的 staticMetaObject
      */
-    virtual const QMetaObject* viewMetaObjectForIndex(const ListIndex& index);
+    virtual const QMetaObject* viewMetaObjectForIndex(const ListIndex& index) = 0;
 
     /**
      * 准备数据项视图
@@ -53,12 +55,33 @@ public:
     virtual bool canSelectItem(const ListIndex& index);
 
     /**
+     * 单选 false ，多选 true
+     * 默认实现为多选
+     * 这只影响鼠标点击 item 时的行为。
+     * 即使此函数定义为单选，开发者也可以使用 ListView::setSelection 强行将选中项设为多个，此后鼠标点选时将回到单选模式。
+     */
+    virtual bool isMultipleSelection();
+
+    /**
+     * 如果想要在某个分组的开头展示一个视图，重写这个函数中并返回非空的视图指针
+     * ListView 将接管它的生命周期。
+     * 默认实现返回 nullptr
+     */
+    virtual QWidget* headerViewForGroup(int group);
+
+    /**
      * 当 ListView 没有指定 DataModel 或 DataModel 中没有数据时，展示的视图
+     * ListView 将接管它的生命周期
+     * 此视图会被用于填充整个 ListView ，请注意处理其 resize 事件
+     * 默认实现返回 nullptr
      */
     virtual QWidget* emptyView();
 
-
-
+    /**
+     * 如果数据项高度受其宽度影响，ListView 在宽度改变时会重新计算每个数据项的高度，会比较耗性能哦。
+     * 当数据项高度受其宽度影响时，返回 true，默认实现返回 false
+     */
+    virtual bool canItemHeightAffectedByWidth();
 
 };
 

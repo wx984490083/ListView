@@ -8,7 +8,7 @@
 
 
 /**
- * 一个神奇的列表视图类
+ * 一个神奇的纵向列表视图类
  *
  * 使用步骤：
  * 1. 定义一个类实现 ListDataModel 相关接口
@@ -18,6 +18,7 @@
  * 5. 调用此类对象的 setViewDelegate 将 ListViewDelegate 子类对象和它关联到一起
  * 6. 像使用其他 QWidget 对象一样使用此类对象
  * 7. 使用完成后，以任意顺序删除第 3 步创建的对象。
+ *
  */
 class ListView : public QWidget
 {
@@ -28,6 +29,9 @@ public:
 
     void setDataModel(ListDataModel* model);
     void setViewDelegate(ListViewDelegate* delegate);
+
+    ListDataModel* dataModel() const;
+    ListViewDelegate* viewDelegate() const;
 
     std::set<ListIndex> selection();
     void setSelection(std::set<ListIndex>&& selection);
@@ -42,6 +46,8 @@ public:
     void scrollToTop();
     void scrollToBottom();
 
+    class ListViewPriv *getPriv() const;
+
 signals:
     void selectionChanged();
     void itemsInserted();
@@ -50,6 +56,9 @@ signals:
     void groupRemoved();
     void itemLeftClicked(const ListIndex& index, ListViewItem* item, QMouseEvent* e);
     void itemRightClicked(const ListIndex& index, ListViewItem* item, QMouseEvent* e);
+
+protected:
+    void resizeEvent(QResizeEvent*) override;
 
 private:
     class ListViewPriv* priv;
