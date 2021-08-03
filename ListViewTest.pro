@@ -26,3 +26,8 @@ win32-msvc: QMAKE_CXXFLAGS += /utf-8
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
+
+#win32: LIBS += -L$$PWD'/../../Program Files (x86)/Visual Leak Detector/lib/Win32/' -lvld
+
+#INCLUDEPATH += $$PWD'/../../Program Files (x86)/Visual Leak Detector/include'
+#DEPENDPATH += $$PWD'/../../Program Files (x86)/Visual Leak Detector/include'

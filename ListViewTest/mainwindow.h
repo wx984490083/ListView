@@ -17,16 +17,20 @@ public:
 
 private slots:
     void on_pushButton_clicked();
-
     void on_btnScrollTo_clicked();
-
     void on_btnBottom_clicked();
-
     void on_btnTop_clicked();
-
     void on_editItem_textChanged(const QString &arg1);
+    void on_editGroup_textChanged(const QString &arg1);
+    void on_editHeight_textChanged(const QString &arg1);
+    void on_btnChangeHeight_clicked();
+    void on_editCount_textChanged(const QString &arg1);
+    void on_btnInsertItem_clicked();
+    void on_btnRemoveItem_clicked();
+    void on_btnInsertGroup_clicked();
+    void on_btnRemoveGroup_clicked();
 
-    void on_editGroup_textEdited(const QString &arg1);
+    void adjustButtonsText();
 
 private:
     class ListView* listView;

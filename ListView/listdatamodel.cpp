@@ -26,7 +26,6 @@ bool ListIndex::operator>=(const ListIndex &other) const {return *this > other |
 ListDataModel::ListDataModel() : priv(new ListDataModelPriv)
 {
     priv->owner = this;
-    qDebug("this = %x, priv.addr = %x", this, &priv);
 }
 
 ListDataModel::~ListDataModel()
@@ -142,9 +141,9 @@ void ListDataModel::endRemoveGroup()
 
 ListDataModelPriv::~ListDataModelPriv()
 {
-    for (auto& listViewPriv : listViewPrivs)
+    while (!listViewPrivs.empty())
     {
-        listViewPriv->setDataModel(nullptr);
+        (*listViewPrivs.begin())->setDataModel(nullptr);
     }
 }
 

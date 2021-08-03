@@ -6,19 +6,23 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>800</width>
-    <height>600</height>
+    <width>743</width>
+    <height>650</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>MainWindow</string>
   </property>
+  <property name="styleSheet">
+   <string notr="true">
+</string>
+  </property>
   <widget class="QWidget" name="centralwidget">
    <widget class="QPushButton" name="pushButton">
     <property name="geometry">
      <rect>
-      <x>280</x>
-      <y>40</y>
+      <x>60</x>
+      <y>180</y>
       <width>160</width>
       <height>48</height>
      </rect>
@@ -74,8 +78,8 @@
    <widget class="QPushButton" name="btnScrollTo">
     <property name="geometry">
      <rect>
-      <x>280</x>
-      <y>170</y>
+      <x>300</x>
+      <y>90</y>
       <width>160</width>
       <height>48</height>
      </rect>
@@ -93,8 +97,8 @@
    <widget class="QLineEdit" name="editGroup">
     <property name="geometry">
      <rect>
-      <x>280</x>
-      <y>120</y>
+      <x>300</x>
+      <y>40</y>
       <width>72</width>
       <height>32</height>
      </rect>
@@ -112,8 +116,8 @@
    <widget class="QLineEdit" name="editItem">
     <property name="geometry">
      <rect>
-      <x>370</x>
-      <y>120</y>
+      <x>390</x>
+      <y>40</y>
       <width>72</width>
       <height>32</height>
      </rect>
@@ -126,6 +130,121 @@
     </property>
     <property name="placeholderText">
      <string>item</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="btnChangeHeight">
+    <property name="geometry">
+     <rect>
+      <x>510</x>
+      <y>90</y>
+      <width>160</width>
+      <height>48</height>
+     </rect>
+    </property>
+    <property name="sizePolicy">
+     <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+      <horstretch>0</horstretch>
+      <verstretch>0</verstretch>
+     </sizepolicy>
+    </property>
+    <property name="text">
+     <string>ChangeHeight</string>
+    </property>
+   </widget>
+   <widget class="QLineEdit" name="editHeight">
+    <property name="geometry">
+     <rect>
+      <x>510</x>
+      <y>40</y>
+      <width>72</width>
+      <height>32</height>
+     </rect>
+    </property>
+    <property name="sizePolicy">
+     <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+      <horstretch>0</horstretch>
+      <verstretch>0</verstretch>
+     </sizepolicy>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+    <property name="placeholderText">
+     <string>height</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="btnInsertGroup">
+    <property name="geometry">
+     <rect>
+      <x>300</x>
+      <y>290</y>
+      <width>371</width>
+      <height>51</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Insert Group At 0 With 0 Items Heights 0</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="btnInsertItem">
+    <property name="geometry">
+     <rect>
+      <x>300</x>
+      <y>150</y>
+      <width>371</width>
+      <height>51</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Insert 0 Item(s) At (0,0) Heights 0</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="btnRemoveGroup">
+    <property name="geometry">
+     <rect>
+      <x>300</x>
+      <y>360</y>
+      <width>371</width>
+      <height>51</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Remove Group At 0</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="btnRemoveItem">
+    <property name="geometry">
+     <rect>
+      <x>300</x>
+      <y>220</y>
+      <width>371</width>
+      <height>51</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Remove 0 Item(s) At (0,0)</string>
+    </property>
+   </widget>
+   <widget class="QLineEdit" name="editCount">
+    <property name="geometry">
+     <rect>
+      <x>600</x>
+      <y>40</y>
+      <width>72</width>
+      <height>32</height>
+     </rect>
+    </property>
+    <property name="sizePolicy">
+     <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+      <horstretch>0</horstretch>
+      <verstretch>0</verstretch>
+     </sizepolicy>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+    <property name="placeholderText">
+     <string>count</string>
     </property>
    </widget>
   </widget>

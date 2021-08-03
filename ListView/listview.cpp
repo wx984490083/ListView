@@ -5,7 +5,66 @@
 #include <QMouseEvent>
 #include <QResizeEvent>
 #include <QScrollBar>
-#include <QDebug>
+
+QString ListViewScrollBarStyle = QStringLiteral(
+            R"(
+            QScrollBar:vertical {
+                border: none;
+                border-radius: 4px;
+                background: "#10000000";
+                max-width: 8px;
+                margin: 0px 0px 0px 0px;
+            }
+
+            QScrollBar::handle:vertical {
+                background: #808080;
+                border-radius: 4px;
+                min-height: 32px;
+            }
+
+            QScrollBar::add-line,QScrollBar::sub-line
+            {
+                height: 0;
+            }
+
+            QScrollBar::add-page,QScrollBar::sub-page
+            {
+                background: none;
+            }
+            )");
+
+class OrderedListHelper
+{
+public:
+    template<class T>
+    static bool contains(const std::list<T>& list, const T& val)
+    {
+        auto it = std::lower_bound(list.begin(), list.end(), val);
+        return (it != list.end() && *it == val);
+    }
+
+    template<class T>
+    static typename std::list<T>::iterator find(std::list<T>& list, const T& val)
+    {
+        auto it = std::lower_bound(list.begin(), list.end(), val);
+        if (it != list.end() && *it != val)
+        {
+            return list.end();
+        }
+        return it;
+    }
+
+    template<class T>
+    static typename std::list<T>::const_iterator find(const std::list<T>& list, const T& val)
+    {
+        auto it = std::lower_bound(list.begin(), list.end(), val);
+        if (it != list.end() && *it != val)
+        {
+            return list.end();
+        }
+        return it;
+    }
+};
 
 ListView::ListView(QWidget *parent) : QWidget(parent), priv(new ListViewPriv)
 {
@@ -15,6 +74,7 @@ ListView::ListView(QWidget *parent) : QWidget(parent), priv(new ListViewPriv)
 
 ListView::~ListView()
 {
+    priv->cleanup();
     delete priv;
 }
 
@@ -38,18 +98,18 @@ ListViewDelegate *ListView::viewDelegate() const
     return priv->viewDelegate();
 }
 
-std::set<ListIndex> ListView::selection()
+std::list<ListIndex> ListView::selection()
 {
     return priv->selection();
 }
 
-void ListView::setSelection(std::set<ListIndex> &&selection)
+void ListView::setSelection(std::list<ListIndex> &&selection)
 {
     auto tmp = std::move(selection);
     priv->setSelection(selection);
 }
 
-void ListView::setSelection(const std::set<ListIndex> &selection)
+void ListView::setSelection(const std::list<ListIndex> &selection)
 {
     priv->setSelection(selection);
 }
@@ -87,11 +147,22 @@ void ListViewPriv::setup()
     scrollArea->setAutoFillBackground(false);
     scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     scrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    scrollArea->setFrameShape(QFrame::NoFrame);
     scrollContent = new QWidget(scrollArea);
     scrollContent->setAutoFillBackground(false);
     scrollArea->setWidget(scrollContent);
+    scrollArea->setStyleSheet(ListViewScrollBarStyle);
 
     QObject::connect(scrollArea->verticalScrollBar(), &QScrollBar::valueChanged, owner, [=]{adjustLoadedItems();});
+}
+
+void ListViewPriv::cleanup()
+{
+    if (currentModel)
+    {
+        currentModel->listViewPrivs.erase(this);
+        currentModel = nullptr;
+    }
 }
 
 void ListViewPriv::processItemClick(QMouseEvent *event, const ListIndex &index, ListViewItemPriv *item)
@@ -112,7 +183,7 @@ void ListViewPriv::processItemClick(QMouseEvent *event, const ListIndex &index, 
 
 void ListViewPriv::setDataModel(ListDataModel *model)
 {
-    auto modelp = model->getPriv();
+    auto modelp = model ? model->getPriv() : nullptr;
 
     if (modelp == currentModel)
     {
@@ -121,7 +192,17 @@ void ListViewPriv::setDataModel(ListDataModel *model)
 
     clear();
 
+    if (currentModel)
+    {
+        currentModel->listViewPrivs.erase(this);
+    }
+
     currentModel = modelp;
+
+    if (currentModel)
+    {
+        currentModel->listViewPrivs.insert(this);
+    }
 
     reload();
 }
@@ -145,12 +226,12 @@ ListViewDelegate *ListViewPriv::viewDelegate() const
     return currentDelegate;
 }
 
-std::set<ListIndex> ListViewPriv::selection()
+std::list<ListIndex> ListViewPriv::selection()
 {
     return selected;
 }
 
-void ListViewPriv::setSelection(const std::set<ListIndex> &selection)
+void ListViewPriv::setSelection(const std::list<ListIndex> &selection)
 {
     if (selected == selection)
     {
@@ -164,7 +245,7 @@ void ListViewPriv::setSelection(const std::set<ListIndex> &selection)
     {
         if (item.view)
         {
-            auto newSelectedState = (selection.find(item.index) != selection.end());
+            auto newSelectedState = OrderedListHelper::contains(selection, item.index);
             if (item.view->selected != newSelectedState)
             {
                 item.view->selected = newSelectedState;
@@ -207,47 +288,290 @@ void ListViewPriv::scrollToBottom()
 
 void ListViewPriv::itemUpdated(const ListIndex &index)
 {
+    if (!currentDelegate)
+    {
+        return;
+    }
+    auto itemNewHeight = currentDelegate->heightForIndex(index, owner->width());
+    auto itemOldHeight = itemHeights[index.group][index.item];
+    auto dh = itemNewHeight - itemOldHeight;
+    contentHeight += dh;
+    itemHeights[index.group][index.item] = itemNewHeight;
+    if (!loadedItems.empty())
+    {
+        auto it = std::lower_bound(loadedItems.begin(), loadedItems.end(), index, [](const LoadedItem& item, const ListIndex& idx)
+        {
+            return item.index < idx;
+        });
 
+        // adjust loadedItems's size and position
+        if (it != loadedItems.end() && it->index == index)
+        {
+            it->view->owner->resize(owner->width(), itemNewHeight);
+            it->h = itemNewHeight;
+
+            while (++it != loadedItems.end())
+            {
+                auto& item = *it;
+                item.y += dh;
+                QWidget* view = (item.index.item == ListIndex::InvalidItemIndex)
+                        ? headerViews[item.index.group]
+                        : item.view->owner;
+                if (view)
+                {
+                    view->move(0, item.y);
+                }
+            }
+        }
+
+        // 调整前断掉信号连接~
+        auto vs = scrollArea->verticalScrollBar();
+        vs->disconnect(owner);
+
+        // 调整scrollContent 高度
+        fixContentSize(false);
+
+        // 如果变动的 item 在 loadedItems 前面，那么可以滚动视图保持视觉不变
+        if (index < loadedItems.begin()->index)
+        {
+            vs->setValue(vs->value() + dh);
+        }
+
+        QObject::connect(scrollArea->verticalScrollBar(), &QScrollBar::valueChanged, owner, [=]{adjustLoadedItems();});
+    }
+    adjustLoadedItems();
 }
 
 void ListViewPriv::beginInsertItem(const ListIndex &insertIndex, size_t count)
 {
-
+    Q_ASSERT(modifyInfo.mode == ModifyModeNone);
+    modifyInfo.mode = ModifyModeInsertItem;
+    modifyInfo.index = insertIndex;
+    modifyInfo.count = count;
 }
 
 void ListViewPriv::endInsertItem()
 {
+    Q_ASSERT(modifyInfo.mode == ModifyModeInsertItem);
+    const auto width = owner->width();
+    auto& groupItemHeights = itemHeights[modifyInfo.index.group];
+    groupItemHeights.insert(groupItemHeights.begin() + modifyInfo.index.item, modifyInfo.count, 0);
+    int insertedTotalHeight = 0;
+    for (int item = modifyInfo.index.item; item < modifyInfo.index.item + modifyInfo.count; item++)
+    {
+        auto& itemHeight = groupItemHeights.at(item);
+        itemHeight = currentDelegate->heightForIndex(ListIndex(modifyInfo.index.group, item), width);
+        insertedTotalHeight += itemHeight;
+    }
+    contentHeight += insertedTotalHeight;
 
+    while (!loadedItems.empty() && loadedItems.back().index >= modifyInfo.index)
+    {
+        auto& item = loadedItems.back();
+        ListIndex newIndex = (item.index.group == modifyInfo.index.group)
+                ? ListIndex(item.index.group, item.index.item + modifyInfo.count)
+                : item.index;
+        adjustItem(item, newIndex, item.y + insertedTotalHeight);
+        pendingItems[newIndex] = item;
+        loadedItems.pop_back();
+    }
+
+    // 重建选中列表，调整其中大于等于 modifyInfo.index 的索引号。
+    auto selectedIt = std::lower_bound(selected.begin(), selected.end(), modifyInfo.index);
+    while (selectedIt != selected.end() && selectedIt->group == modifyInfo.index.group)
+    {
+        selectedIt->item += modifyInfo.count;
+        selectedIt++;
+    }
+
+    fixContentSize(false);
+    adjustLoadedItems();
+    modifyInfo.mode = ModifyModeNone;
 }
 
 void ListViewPriv::beginInsertGroup(int groupIndex)
 {
-
+    Q_ASSERT(modifyInfo.mode == ModifyModeNone);
+    modifyInfo.mode = ModifyModeInsertGroup;
+    modifyInfo.index = ListIndex(groupIndex);
+    modifyInfo.count = 1;
 }
 
 void ListViewPriv::endInsertGroup()
 {
+    Q_ASSERT(modifyInfo.mode == ModifyModeInsertGroup);
+    const auto width = owner->width();
 
+    auto headerView = currentDelegate->headerViewForGroup(modifyInfo.index.group);
+    if (headerView)
+    {
+        headerView->setParent(scrollContent);
+    }
+    headerViews.insert(headerViews.begin() + modifyInfo.index.group, headerView);
+
+    auto& groupItemHeights = *(itemHeights.insert(itemHeights.begin() + modifyInfo.index.group, modifyInfo.count, {}));
+    auto numItems = currentModel->owner->numItemsInGroup(modifyInfo.index.group);
+    groupItemHeights.resize(numItems);
+    int insertedTotalHeight = 0;
+    for (int item = 0; item < numItems; item++)
+    {
+        auto& itemHeight = groupItemHeights[item];
+        itemHeight = currentDelegate->heightForIndex(ListIndex(modifyInfo.index.group, item), width);
+        insertedTotalHeight += itemHeight;
+    }
+    insertedTotalHeight += (headerView ? headerView->height() : 0);
+    contentHeight += insertedTotalHeight;
+
+    while (!loadedItems.empty() && loadedItems.back().index >= modifyInfo.index)
+    {
+        auto& item = loadedItems.back();
+        ListIndex newIndex = ListIndex(item.index.group + 1, item.index.item);
+        adjustItem(item, newIndex, item.y + insertedTotalHeight);
+        pendingItems[newIndex] = item;
+        loadedItems.pop_back();
+    }
+
+    // 重建选中列表，调整其中大于等于 modifyInfo.index 的索引号。
+    auto selectedIt = std::lower_bound(selected.begin(), selected.end(), modifyInfo.index);
+    while (selectedIt != selected.end())
+    {
+        selectedIt->group += 1;
+        selectedIt++;
+    }
+
+    fixContentSize(false);
+    adjustLoadedItems();
+    modifyInfo.mode = ModifyModeNone;
 }
 
 void ListViewPriv::beginRemoveItem(const ListIndex &removeIndex, size_t count)
 {
-
+    Q_ASSERT(modifyInfo.mode == ModifyModeNone);
+    modifyInfo.mode = ModifyModeRemoveItem;
+    modifyInfo.index = removeIndex;
+    modifyInfo.count = count;
 }
 
 void ListViewPriv::endRemoveItem()
 {
+    Q_ASSERT(modifyInfo.mode == ModifyModeRemoveItem);
+    auto& groupItemHeights = itemHeights[modifyInfo.index.group];
+    int deletedTotalHeight = 0;
+    for (int item = modifyInfo.index.item; item < modifyInfo.index.item + modifyInfo.count; item++)
+    {
+        const auto& itemHeight = groupItemHeights.at(item);
+        deletedTotalHeight += itemHeight;
+    }
+    contentHeight -= deletedTotalHeight;
+    groupItemHeights.erase(groupItemHeights.begin() + modifyInfo.index.item, groupItemHeights.begin() + modifyInfo.index.item + modifyInfo.count);
 
+    while (!loadedItems.empty() && loadedItems.back().index >= modifyInfo.index)
+    {
+        auto& item = loadedItems.back();
+        if (item.index.group == modifyInfo.index.group && item.index.item < modifyInfo.index.item + modifyInfo.count)
+        {
+            // This item has been removed, now recycle the view.
+            item.view->owner->hide();
+            reusePool[item.view->owner->metaObject()].push_back(item.view);
+        }
+        else
+        {
+            ListIndex newIndex = (item.index.group == modifyInfo.index.group)
+                    ? ListIndex(item.index.group, item.index.item - modifyInfo.count)
+                    : item.index;
+            adjustItem(item, newIndex, item.y - deletedTotalHeight);
+            pendingItems[newIndex] = item;
+        }
+        loadedItems.pop_back();
+    }
+
+    // 重建选中列表，删除对应的索引，并调整其中大于等于 modifyInfo.index 的索引号。
+    auto selectedIt = std::lower_bound(selected.begin(), selected.end(), modifyInfo.index);
+    while (selectedIt != selected.end() && selectedIt->group == modifyInfo.index.group)
+    {
+        if (selectedIt->item < modifyInfo.index.item + modifyInfo.count)
+        {
+            selectedIt = selected.erase(selectedIt);
+        }
+        else
+        {
+            selectedIt->group -= modifyInfo.count;
+            selectedIt++;
+        }
+    }
+
+    fixContentSize(false);
+    adjustLoadedItems();
+    modifyInfo.mode = ModifyModeNone;
 }
 
 void ListViewPriv::beginRemoveGroup(int groupIndex)
 {
-
+    Q_ASSERT(modifyInfo.mode == ModifyModeNone);
+    modifyInfo.mode = ModifyModeRemoveGroup;
+    modifyInfo.index = ListIndex(groupIndex);
+    modifyInfo.count = 1;
 }
 
 void ListViewPriv::endRemoveGroup()
 {
+    Q_ASSERT(modifyInfo.mode == ModifyModeRemoveGroup);
+    auto& groupItemHeights = itemHeights[modifyInfo.index.group];
+    int deletedTotalHeight = 0;
+    for (auto& height : groupItemHeights)
+    {
+        deletedTotalHeight += height;
+    }
+    if (auto& view = headerViews[modifyInfo.index.group])
+    {
+        deletedTotalHeight += view->height();
+        view->height();
+        delete view;
+    }
+    contentHeight -= deletedTotalHeight;
+    itemHeights.erase(itemHeights.begin() + modifyInfo.index.group);
+    headerViews.erase(headerViews.begin() + modifyInfo.index.group);
 
+    while (!loadedItems.empty() && loadedItems.back().index >= modifyInfo.index)
+    {
+        auto& item = loadedItems.back();
+        if (item.index.group == modifyInfo.index.group)
+        {
+            // This item has been removed, recycle the view.
+            // Ignore the header view
+            if (item.index.item != ListIndex::InvalidItemIndex)
+            {
+                item.view->owner->hide();
+                reusePool[item.view->owner->metaObject()].push_back(item.view);
+            }
+        }
+        else
+        {
+            ListIndex newIndex = ListIndex(item.index.group - 1, item.index.item);
+            adjustItem(item, newIndex, item.y - deletedTotalHeight);
+            pendingItems[newIndex] = item;
+        }
+        loadedItems.pop_back();
+    }
+
+    // 重建选中列表，删除对应的索引，调整其中大于等于 modifyInfo.index 的索引号。
+    auto selectedIt = std::lower_bound(selected.begin(), selected.end(), modifyInfo.index);
+    while (selectedIt != selected.end())
+    {
+        if (selectedIt->group == modifyInfo.index.group)
+        {
+            selectedIt = selected.erase(selectedIt);
+        }
+        else
+        {
+            selectedIt->group -= 1;
+            selectedIt++;
+        }
+    }
+
+    fixContentSize(false);
+    adjustLoadedItems();
+    modifyInfo.mode = ModifyModeNone;
 }
 
 void ListViewPriv::onResized(const QSize& oldSize)
@@ -310,17 +634,10 @@ void ListViewPriv::reload()
         return;
     }
 
-    if (!currentModel->owner->numGroups())
-    {
-        setupEmptyView();
-    }
-    else
-    {
-        cacheHeaders();
-        cacheHeightsAndAnchorPos();
-        fixContentSize(false);
-        adjustLoadedItems();
-    }
+    cacheHeaders();
+    cacheHeightsAndAnchorPos();
+    fixContentSize(false);
+    adjustLoadedItems();
 }
 
 void ListViewPriv::cacheHeaders()
@@ -332,7 +649,6 @@ void ListViewPriv::cacheHeaders()
         auto view = currentDelegate->headerViewForGroup(group);
         if (view)
         {
-            view->hide();
             view->setParent(scrollContent);
         }
         headerViews.push_back(view);
@@ -366,7 +682,7 @@ int ListViewPriv::cacheHeightsAndAnchorPos(const ListIndex& anchorIndex)
         {
             if (anchorIndex == ListIndex(group, item))
             {
-                anchorY = contentHeight;
+                anchorY = contentHeight + groupHeight;
             }
             auto itemHeight = currentDelegate->heightForIndex(ListIndex(group, item), width);
             groupItemHeights[item] = itemHeight;
@@ -382,24 +698,50 @@ int ListViewPriv::cacheHeightsAndAnchorPos(const ListIndex& anchorIndex)
 
 void ListViewPriv::setupEmptyView()
 {
-    emptyView = currentDelegate->emptyView();
+    if (!emptyView)
+    {
+        emptyView = currentDelegate->emptyView();
+        if (emptyView)
+        {
+            emptyView->setParent(owner);
+        }
+    }
     if (emptyView)
     {
-        emptyView->setParent(owner);
         emptyView->raise();
         emptyView->setGeometry(owner->rect());
         emptyView->show();
     }
 }
 
+void ListViewPriv::clearEmptyView()
+{
+    if (emptyView)
+    {
+        emptyView->hide();
+        emptyView->deleteLater();
+        emptyView = nullptr;
+    }
+}
+
 void ListViewPriv::adjustLoadedItems()
 {
-    // TODO: 这里的逻辑有点儿简单粗暴，可以考虑细化一下~
+    if (!currentDelegate)
+    {
+        return;
+    }
+
     if (modelNotEmpty())
     {
+        clearEmptyView();
         unloadOutOfViewportItems();
         loadUnderItems();
         loadAboveItems();
+        recyclePreloadedItems();
+    }
+    else
+    {
+        setupEmptyView();
     }
 }
 
@@ -410,6 +752,11 @@ void ListViewPriv::fixContentSize(bool widthChanged)
     if (!widthChanged)
     {
         scrollContent->resize(width, contentHeight);
+        return;
+    }
+
+    if (!currentModel || !currentDelegate)
+    {
         return;
     }
 
@@ -446,7 +793,7 @@ void ListViewPriv::fixContentSize(bool widthChanged)
 
         if (contentHeight != scrollContent->height())
         {
-            qDebug("contentHeight = %d, scrollContentH = %d", contentHeight, scrollContent->height());
+            // The contentHeight is too large... ( > QWIDGETSIZE_MAX)
         }
 
         if (loadedItems.empty())
@@ -554,14 +901,28 @@ void ListViewPriv::loadAboveItems()
             if (nextIndex.item == ListIndex::InvalidItemIndex)
             {
                 auto& headerView = headerViews[nextIndex.group];
-                headerView->setGeometry(0, nextY, width, nextHeight);
-                headerView->show();
+                if (headerView)
+                {
+                    headerView->setGeometry(0, nextY, width, nextHeight);
+                    headerView->show();
+                }
                 loadedItems.push_front({nextIndex, nextY, nextHeight, nullptr});
             }
             else
             {
-                auto view = generateItemView(nextIndex, nextY, nextHeight);
-                loadedItems.push_front({nextIndex, nextY, nextHeight, view});
+                auto pendingIt = pendingItems.find(nextIndex);
+                if (pendingIt != pendingItems.end())
+                {
+                    auto& item = pendingIt->second;
+                    Q_ASSERT(item.y == nextY);
+                    Q_ASSERT(item.h == nextHeight);
+                    loadedItems.push_front(item);
+                }
+                else
+                {
+                    auto view = generateItemView(nextIndex, nextY, nextHeight);
+                    loadedItems.push_front({nextIndex, nextY, nextHeight, view});
+                }
             }
         }
 
@@ -606,6 +967,7 @@ void ListViewPriv::loadUnderItems()
     {
         if (nextY + nextHeight >= viewportTop)
         {
+            auto pendingIt = pendingItems.find(nextIndex);
             if (nextIndex.item == ListIndex::InvalidItemIndex)
             {
                 auto& headerView = headerViews[nextIndex.group];
@@ -618,8 +980,22 @@ void ListViewPriv::loadUnderItems()
             }
             else
             {
-                auto view = generateItemView(nextIndex, nextY, nextHeight);
-                loadedItems.push_back({nextIndex, nextY, nextHeight, view});
+                if (pendingIt != pendingItems.end())
+                {
+                    auto& item = pendingIt->second;
+                    Q_ASSERT(item.y == nextY);
+                    Q_ASSERT(item.h == nextHeight);
+                    loadedItems.push_back(item);
+                }
+                else
+                {
+                    auto view = generateItemView(nextIndex, nextY, nextHeight);
+                    loadedItems.push_back({nextIndex, nextY, nextHeight, view});
+                }
+            }
+            if (pendingIt != pendingItems.end())
+            {
+                pendingItems.erase(pendingIt);
             }
         }
 
@@ -676,6 +1052,28 @@ void ListViewPriv::unloadOutOfViewportItems()
     }
 }
 
+void ListViewPriv::recyclePreloadedItems()
+{
+    for (auto& pair : pendingItems)
+    {
+        auto& index = pair.first;
+        auto& item = pair.second;
+        if (index.item == ListIndex::InvalidItemIndex)
+        {
+            if (auto& headerView = headerViews[index.group])
+            {
+                headerView->hide();
+            }
+        }
+        else
+        {
+            item.view->owner->hide();
+            reusePool[item.view->owner->metaObject()].push_back(item.view);
+        }
+    }
+    pendingItems.clear();
+}
+
 ListIndex ListViewPriv::increaseIndex(const ListIndex &index)
 {
     int group, item;
@@ -729,6 +1127,43 @@ ListIndex ListViewPriv::decreaseIndex(const ListIndex &index)
     return ListIndex(group, item);
 }
 
+void ListViewPriv::scrollWithoutNotify(int dy)
+{
+    auto vs = scrollArea->verticalScrollBar();
+    vs->disconnect(owner);
+    vs->setValue(vs->value() + dy);
+    QObject::connect(scrollArea->verticalScrollBar(), &QScrollBar::valueChanged, owner, [=]{adjustLoadedItems();});
+}
+
+void ListViewPriv::adjustItem(ListViewPriv::LoadedItem &item, const ListIndex& newIndex, int y)
+{
+    item.y = y;
+    item.index = newIndex;
+    if (item.index.item == ListIndex::InvalidItemIndex)
+    {
+        auto& view = headerViews[item.index.group];
+        if (view)
+        {
+            view->move(0, y);
+        }
+    }
+    else
+    {
+        item.view->index = newIndex;
+        item.view->owner->move(0, y);
+    }
+}
+
+std::list<ListViewPriv::LoadedItem>::iterator ListViewPriv::loadedItemAt(const ListIndex &index)
+{
+    auto it = std::lower_bound(loadedItems.begin(), loadedItems.end(), index, [](const LoadedItem& item, const ListIndex& idx)
+    {
+        return item.index < idx;
+    });
+    auto found = (it != loadedItems.end() && it->index == index);
+    return found ? it : loadedItems.end();
+}
+
 ListViewItemPriv *ListViewPriv::generateItemView(const ListIndex &index, int y, int height)
 {
     ListViewItemPriv* result;
@@ -747,7 +1182,7 @@ ListViewItemPriv *ListViewPriv::generateItemView(const ListIndex &index, int y, 
     }
     result->owner->setGeometry(0, y, owner->width(), height);
     result->index = index;
-    result->selected = selected.find(index) != selected.end();
+    result->selected = OrderedListHelper::contains(selected, index);
 
     currentDelegate->prepareItemView(index, result->owner);
 
@@ -772,7 +1207,7 @@ void ListViewPriv::processItemSelection(const ListIndex& index)
 
     if (currentDelegate->isMultipleSelection())
     {
-        auto findit = selected.lower_bound(index);
+        auto findit = OrderedListHelper::find(selected, index);
         if (findit != selected.end() && *findit == index)
         {
             selected.erase(findit);

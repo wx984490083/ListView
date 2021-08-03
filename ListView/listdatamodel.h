@@ -98,6 +98,7 @@ protected:
      * 此函数与 endInsertItem 函数成对使用，在插入数据完成后，应调用 endInsertItem
      * 请确保在插入数据项之前调用此函数，这将使 ListView 及时更新。
      * 请确保本次插入的数据项与传入的参数一致，否则我也不知道会发生什么~。
+     * 这些接口必须在 UI 线程调用，并且回到事件循环之前必须完成数据更改 (begin* end* 在一次事件循环中成对调用)
      * @param insertIndex 从此索引开始插入，即将插入的所有数据项都应与此索引在同一个分组
      * @param count 插入数据项的数量
      */
@@ -107,6 +108,7 @@ protected:
      * 请确保在插入数据项完成之后调用此函数，这将使 ListView 及时更新。
      * 通知 ListView 已完成数据更改。
      * 如果此前没有调用 beginInsertItem ，那么对此函数的调用是无效的。
+     * 这些接口必须在 UI 线程调用，并且回到事件循环之前必须完成数据更改 (begin* end* 在一次事件循环中成对调用)
      */
     void endInsertItem();
 
@@ -115,6 +117,7 @@ protected:
      * 此函数与 endInsertGroup 函数成对使用，在插入数据完成后，应调用 endInsertGroup
      * 请确保在插入分组之前调用此函数，这将使 ListView 及时更新。
      * 请确保本次插入的数据项与传入的参数一致，否则我也不知道会发生什么~。
+     * 这些接口必须在 UI 线程调用，并且回到事件循环之前必须完成数据更改 (begin* end* 在一次事件循环中成对调用)
      * @param groupIndex 插入的分组索引
      */
     void beginInsertGroup(int groupIndex);
@@ -123,6 +126,7 @@ protected:
      * 请确保在插入分组完成之后调用此函数，这将使 ListView 及时更新。
      * 通知 ListView 已完成数据更改。
      * 如果此前没有调用 beginInsertGroup ，那么对此函数的调用是无效的。
+     * 这些接口必须在 UI 线程调用，并且回到事件循环之前必须完成数据更改 (begin* end* 在一次事件循环中成对调用)
      */
     void endInsertGroup();
 
@@ -132,6 +136,7 @@ protected:
      * 此函数与 endRemoveItem 函数成对使用，在删除数据完成后，应调用 endRemoveItem
      * 请确保在删除数据项之前调用此函数，这将使 ListView 及时更新。
      * 请确保本次删除的数据项与传入的参数一致，否则我也不知道会发生什么~。
+     * 这些接口必须在 UI 线程调用，并且回到事件循环之前必须完成数据更改 (begin* end* 在一次事件循环中成对调用)
      * @param insertIndex 从此索引开始删除，即将删除的所有数据项都应与此索引在同一个分组
      * @param count 删除数据项的数量，如果 removeIndex.
      */
@@ -141,6 +146,7 @@ protected:
      * 请确保在删除数据项完成之后调用此函数，这将使 ListView 及时更新。
      * 通知 ListView 已完成数据更改。
      * 如果此前没有调用 beginRemoveItem ，那么对此函数的调用是无效的。
+     * 这些接口必须在 UI 线程调用，并且回到事件循环之前必须完成数据更改 (begin* end* 在一次事件循环中成对调用)
      */
     void endRemoveItem();
 
@@ -149,6 +155,7 @@ protected:
      * 此函数与 endRemoveGroup 函数成对使用，在删除数据完成后，应调用 endRemoveGroup
      * 请确保在删除分组之前调用此函数，这将使 ListView 及时更新。
      * 请确保本次删除的数据项与传入的参数一致，否则我也不知道会发生什么~。
+     * 这些接口必须在 UI 线程调用，并且回到事件循环之前必须完成数据更改 (begin* end* 在一次事件循环中成对调用)
      * @param groupIndex 插入的分组索引
      */
     void beginRemoveGroup(int groupIndex);
@@ -157,6 +164,7 @@ protected:
      * 请确保在删除分组完成之后调用此函数，这将使 ListView 及时更新。
      * 通知 ListView 已完成数据更改。
      * 如果此前没有调用 beginRemoveGroup ，那么对此函数的调用是无效的。
+     * 这些接口必须在 UI 线程调用，并且回到事件循环之前必须完成数据更改 (begin* end* 在一次事件循环中成对调用)
      */
     void endRemoveGroup();
 

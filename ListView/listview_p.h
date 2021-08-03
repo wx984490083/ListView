@@ -12,6 +12,7 @@ public:
     ListView* owner;
 
     void setup();
+    void cleanup();
 
     void processItemClick(QMouseEvent *event, const ListIndex& index, ListViewItemPriv* item);
     void setDataModel(ListDataModel* model);
@@ -20,8 +21,8 @@ public:
     ListDataModel* dataModel() const;
     ListViewDelegate* viewDelegate() const;
 
-    std::set<ListIndex> selection();
-    void setSelection(const std::set<ListIndex>& selection);
+    std::list<ListIndex> selection();
+    void setSelection(const std::list<ListIndex>& selection);
     void scrollToItem(const ListIndex& index);
     void scrollToTop();
     void scrollToBottom();
@@ -55,19 +56,33 @@ private:
 
     std::map<const QMetaObject*, std::list<ListViewItemPriv*>> reusePool;
 
-    /**
-     * 记录已加载的数据项视图
-     * 开发过程需要保证：其中的数据项索引是严格递增的，不会出现跳跃
-     */
     std::list<LoadedItem> loadedItems;
 
-    std::set<ListIndex> selected;
+    std::map<ListIndex, LoadedItem> pendingItems;
+
+    std::list<ListIndex> selected;
 
     QWidget* emptyView = nullptr;
     std::vector<QWidget*> headerViews;
     std::vector<int> groupHeights;
     std::vector<std::vector<int>> itemHeights;
-    int contentHeight;
+    int contentHeight = 0;
+
+    enum ModifyMode
+    {
+        ModifyModeNone,
+        ModifyModeInsertItem,
+        ModifyModeRemoveItem,
+        ModifyModeInsertGroup,
+        ModifyModeRemoveGroup
+    };
+
+    struct ModifyInfo
+    {
+        int mode = ModifyModeNone;
+        ListIndex index;
+        int count = 0;
+    }modifyInfo;
 
     void clear();
     void reload();
@@ -76,6 +91,7 @@ private:
     int cacheHeightsAndAnchorPos(const ListIndex &anchorIndex = ListIndex());
 
     void setupEmptyView();
+    void clearEmptyView();
 
     void adjustLoadedItems();
 
@@ -88,6 +104,7 @@ private:
     void loadAboveItems();
     void loadUnderItems();
     void unloadOutOfViewportItems();
+    void recyclePreloadedItems();
 
     ListViewItemPriv* generateItemView(const ListIndex& index, int y, int height);
 
@@ -99,6 +116,11 @@ private:
     int itemPosition(const ListIndex& index);
     ListIndex increaseIndex(const ListIndex& index);
     ListIndex decreaseIndex(const ListIndex& index);
+    void scrollWithoutNotify(int dy);
+
+    void adjustItem(LoadedItem& item, const ListIndex &newIndex, int y);
+
+    std::list<LoadedItem>::iterator loadedItemAt(const ListIndex& index);
 };
 
 #endif

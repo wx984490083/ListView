@@ -2,7 +2,7 @@
 #define LISTDATAMODEL_IMPL_HPP
 
 #include "listdatamodel.h"
-#include <list>
+#include <set>
 
 class ListViewPriv;
 
@@ -13,7 +13,7 @@ public:
     ~ListDataModelPriv();
 
     ListDataModel* owner;
-    std::list<ListViewPriv*> listViewPrivs;
+    std::set<ListViewPriv*> listViewPrivs;
 };
 
 #endif

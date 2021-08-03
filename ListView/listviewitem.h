@@ -3,7 +3,6 @@
 
 #include <QWidget>
 
-
 class ListViewItem : public QWidget
 {
     Q_OBJECT

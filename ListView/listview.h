@@ -5,14 +5,14 @@
 #include <QWidget>
 #include "listdatamodel.h"
 #include "listviewdelegate.h"
-
+#include "listviewitem.h"
 
 /**
- * 一个神奇的纵向列表视图类
+ * 😆 一个神奇的纵向列表视图类 😆
  *
  * 使用步骤：
  * 1. 定义一个类实现 ListDataModel 相关接口
- * 2. 定义一个类实现 ListViewDelegate 相关接口
+ * 2. 定义一个类实现 ListViewDelegate 相关接口，可以与 ListDataModel 接口在同一个类实现，但不推荐
  * 3. 创建 ListView, ListDataModel子类, ListViewDelegate子类 对象各一个
  * 4. 调用此类对象的 setDataModel 将 ListDataModel 子类对象和它关联到一起
  * 5. 调用此类对象的 setViewDelegate 将 ListViewDelegate 子类对象和它关联到一起
@@ -33,9 +33,9 @@ public:
     ListDataModel* dataModel() const;
     ListViewDelegate* viewDelegate() const;
 
-    std::set<ListIndex> selection();
-    void setSelection(std::set<ListIndex>&& selection);
-    void setSelection(const std::set<ListIndex>& selection);
+    std::list<ListIndex> selection();
+    void setSelection(std::list<ListIndex>&& selection);
+    void setSelection(const std::list<ListIndex>& selection);
 
     /**
      * 滚动视图使 index 代表的数据项显示出来。
