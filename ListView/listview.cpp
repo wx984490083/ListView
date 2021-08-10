@@ -151,7 +151,15 @@ void ListViewPriv::setup()
     scrollContent = new QWidget(scrollArea);
     scrollContent->setAutoFillBackground(false);
     scrollArea->setWidget(scrollContent);
-    scrollArea->setStyleSheet(ListViewScrollBarStyle);
+
+    // TODO: 有时间可以研究一下
+    // 假如这里直接 scrollArea->setStyleSheet ，如果父窗口有样式，会导致此处滚动条样式失效。
+    // 但直接对 verticalScrollBar 设置就不会被影响。
+    scrollArea->verticalScrollBar()-> setStyleSheet(ListViewScrollBarStyle);
+
+    scrollArea->setAutoFillBackground(false);
+    scrollContent->setAutoFillBackground(false);
+    scrollArea->viewport()->setAutoFillBackground(false);
 
     QObject::connect(scrollArea->verticalScrollBar(), &QScrollBar::valueChanged, owner, [=]{adjustLoadedItems();});
 }
@@ -286,6 +294,12 @@ void ListViewPriv::scrollToBottom()
     vs->setValue(vs->maximum());
 }
 
+void ListViewPriv::requireReload()
+{
+    clear();
+    reload();
+}
+
 void ListViewPriv::itemUpdated(const ListIndex &index)
 {
     if (!currentDelegate)
@@ -344,6 +358,10 @@ void ListViewPriv::itemUpdated(const ListIndex &index)
 
 void ListViewPriv::beginInsertItem(const ListIndex &insertIndex, size_t count)
 {
+    if (!currentDelegate)
+    {
+        return;
+    }
     Q_ASSERT(modifyInfo.mode == ModifyModeNone);
     modifyInfo.mode = ModifyModeInsertItem;
     modifyInfo.index = insertIndex;
@@ -352,6 +370,10 @@ void ListViewPriv::beginInsertItem(const ListIndex &insertIndex, size_t count)
 
 void ListViewPriv::endInsertItem()
 {
+    if (!currentDelegate)
+    {
+        return;
+    }
     Q_ASSERT(modifyInfo.mode == ModifyModeInsertItem);
     const auto width = owner->width();
     auto& groupItemHeights = itemHeights[modifyInfo.index.group];
@@ -387,10 +409,15 @@ void ListViewPriv::endInsertItem()
     fixContentSize(false);
     adjustLoadedItems();
     modifyInfo.mode = ModifyModeNone;
+    emit owner->itemsInserted(modifyInfo.index, modifyInfo.count);
 }
 
 void ListViewPriv::beginInsertGroup(int groupIndex)
 {
+    if (!currentDelegate)
+    {
+        return;
+    }
     Q_ASSERT(modifyInfo.mode == ModifyModeNone);
     modifyInfo.mode = ModifyModeInsertGroup;
     modifyInfo.index = ListIndex(groupIndex);
@@ -399,6 +426,10 @@ void ListViewPriv::beginInsertGroup(int groupIndex)
 
 void ListViewPriv::endInsertGroup()
 {
+    if (!currentDelegate)
+    {
+        return;
+    }
     Q_ASSERT(modifyInfo.mode == ModifyModeInsertGroup);
     const auto width = owner->width();
 
@@ -442,10 +473,15 @@ void ListViewPriv::endInsertGroup()
     fixContentSize(false);
     adjustLoadedItems();
     modifyInfo.mode = ModifyModeNone;
+    emit owner->groupInserted(modifyInfo.index.group);
 }
 
 void ListViewPriv::beginRemoveItem(const ListIndex &removeIndex, size_t count)
 {
+    if (!currentDelegate)
+    {
+        return;
+    }
     Q_ASSERT(modifyInfo.mode == ModifyModeNone);
     modifyInfo.mode = ModifyModeRemoveItem;
     modifyInfo.index = removeIndex;
@@ -454,6 +490,10 @@ void ListViewPriv::beginRemoveItem(const ListIndex &removeIndex, size_t count)
 
 void ListViewPriv::endRemoveItem()
 {
+    if (!currentDelegate)
+    {
+        return;
+    }
     Q_ASSERT(modifyInfo.mode == ModifyModeRemoveItem);
     auto& groupItemHeights = itemHeights[modifyInfo.index.group];
     int deletedTotalHeight = 0;
@@ -503,10 +543,15 @@ void ListViewPriv::endRemoveItem()
     fixContentSize(false);
     adjustLoadedItems();
     modifyInfo.mode = ModifyModeNone;
+    emit owner->itemsRemoved(modifyInfo.index, modifyInfo.count);
 }
 
 void ListViewPriv::beginRemoveGroup(int groupIndex)
 {
+    if (!currentDelegate)
+    {
+        return;
+    }
     Q_ASSERT(modifyInfo.mode == ModifyModeNone);
     modifyInfo.mode = ModifyModeRemoveGroup;
     modifyInfo.index = ListIndex(groupIndex);
@@ -515,6 +560,10 @@ void ListViewPriv::beginRemoveGroup(int groupIndex)
 
 void ListViewPriv::endRemoveGroup()
 {
+    if (!currentDelegate)
+    {
+        return;
+    }
     Q_ASSERT(modifyInfo.mode == ModifyModeRemoveGroup);
     auto& groupItemHeights = itemHeights[modifyInfo.index.group];
     int deletedTotalHeight = 0;
@@ -572,6 +621,7 @@ void ListViewPriv::endRemoveGroup()
     fixContentSize(false);
     adjustLoadedItems();
     modifyInfo.mode = ModifyModeNone;
+    emit owner->groupRemoved(modifyInfo.index.group);
 }
 
 void ListViewPriv::onResized(const QSize& oldSize)
@@ -692,7 +742,6 @@ int ListViewPriv::cacheHeightsAndAnchorPos(const ListIndex& anchorIndex)
         // TODO: 这里可能需要做加法溢出判断，如果有溢出，则修改加载逻辑，不加载任何东西~
         contentHeight += groupHeight;
     }
-
     return anchorY;
 }
 
@@ -863,7 +912,10 @@ void ListViewPriv::fixContentSize(bool widthChanged)
                     ? headerViews[item.index.group]
                     : item.view->owner;
 
-            view->setGeometry(0, item.y, width, item.h);
+            if (view)
+            {
+                view->setGeometry(0, item.y, width, item.h);
+            }
         }
 
         scrollContent->resize(width, contentHeight);

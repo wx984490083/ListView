@@ -65,6 +65,14 @@ void ListDataModel::onRequestMoreTailingData()
 
 }
 
+void ListDataModel::requireReload()
+{
+    for (auto& listViewPriv : priv->listViewPrivs)
+    {
+        listViewPriv->requireReload();
+    }
+}
+
 void ListDataModel::itemUpdated(const ListIndex &index)
 {
     for (auto& listViewPriv : priv->listViewPrivs)
@@ -73,7 +81,7 @@ void ListDataModel::itemUpdated(const ListIndex &index)
     }
 }
 
-void ListDataModel::beginInsertItem(const ListIndex &insertIndex, size_t count)
+void ListDataModel::beginInsertItems(const ListIndex &insertIndex, size_t count)
 {
     for (auto& listViewPriv : priv->listViewPrivs)
     {
@@ -81,7 +89,7 @@ void ListDataModel::beginInsertItem(const ListIndex &insertIndex, size_t count)
     }
 }
 
-void ListDataModel::endInsertItem()
+void ListDataModel::endInsertItems()
 {
     for (auto& listViewPriv : priv->listViewPrivs)
     {
@@ -105,7 +113,7 @@ void ListDataModel::endInsertGroup()
     }
 }
 
-void ListDataModel::beginRemoveItem(const ListIndex &removeIndex, size_t count)
+void ListDataModel::beginRemoveItems(const ListIndex &removeIndex, size_t count)
 {
     for (auto& listViewPriv : priv->listViewPrivs)
     {
@@ -113,7 +121,7 @@ void ListDataModel::beginRemoveItem(const ListIndex &removeIndex, size_t count)
     }
 }
 
-void ListDataModel::endRemoveItem()
+void ListDataModel::endRemoveItems()
 {
     for (auto& listViewPriv : priv->listViewPrivs)
     {

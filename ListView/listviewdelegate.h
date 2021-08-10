@@ -56,7 +56,7 @@ public:
 
     /**
      * 单选 false ，多选 true
-     * 默认实现为多选
+     * 默认实现为单选
      * 这只影响鼠标点击 item 时的行为。
      * 即使此函数定义为单选，开发者也可以使用 ListView::setSelection 强行将选中项设为多个，此后鼠标点选时将回到单选模式。
      */
@@ -78,8 +78,8 @@ public:
     virtual QWidget* emptyView();
 
     /**
-     * 如果数据项高度受其宽度影响，ListView 在宽度改变时会重新计算每个数据项的高度，会比较耗性能哦。
      * 当数据项高度受其宽度影响时，返回 true，默认实现返回 false
+     * 如果返回 true，ListView 在宽度改变时会重新计算每个数据项的高度，会比较耗性能哦。
      */
     virtual bool canItemHeightAffectedByWidth();
 

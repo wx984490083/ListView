@@ -27,6 +27,7 @@ public:
     void scrollToTop();
     void scrollToBottom();
 
+    void requireReload();
     void itemUpdated(const ListIndex& index);
     void beginInsertItem(const ListIndex& insertIndex, size_t count);
     void endInsertItem();

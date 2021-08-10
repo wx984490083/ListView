@@ -50,10 +50,10 @@ public:
 
 signals:
     void selectionChanged();
-    void itemsInserted();
-    void itemsRemoved();
-    void groupInserted();
-    void groupRemoved();
+    void itemsInserted(const ListIndex& index, int count);
+    void itemsRemoved(const ListIndex& index, int count);
+    void groupInserted(int group);
+    void groupRemoved(int group);
     void itemLeftClicked(const ListIndex& index, ListViewItem* item, QMouseEvent* e);
     void itemRightClicked(const ListIndex& index, ListViewItem* item, QMouseEvent* e);
 

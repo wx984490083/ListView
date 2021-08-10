@@ -6,16 +6,17 @@ CONFIG += c++11
 
 
 SOURCES += \   
-    $$PWD/listview/listdatamodel.cpp \
-    $$PWD/listview/listviewdelegate.cpp \
-    $$PWD/listview/listview.cpp \
-    $$PWD/listview/listviewitem.cpp
+    $$PWD/ListView/listdatamodel.cpp \
+    $$PWD/ListView/listviewdelegate.cpp \
+    $$PWD/ListView/listview.cpp \
+    $$PWD/ListView/listviewitem.cpp
 
 HEADERS += \
-    $$PWD/listview/listdatamodel.h \
-    $$PWD/listview/listviewdelegate.h \
-    $$PWD/listview/listview.h \
-    $$PWD/listview/listviewitem.h
+    $$PWD/ListView/listdatamodel.h \
+    $$PWD/ListView/listviewdelegate.h \
+    $$PWD/ListView/listview.h \
+    $$PWD/ListView/listviewitem.h
 
+INCLUDEPATH += $$PWD
 
 

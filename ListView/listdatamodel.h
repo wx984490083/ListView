@@ -88,6 +88,13 @@ protected:
     /// 以下是本类已实现的保护接口，供子类调用。
 protected:
     /**
+     * 通知 ListView 数据已更新，需要重新加载视图
+     * 如果数据有很大的改动，可调用此函数。
+     * 如果是简单的插入删除操作，请使用 [begin/end][Insert/Remove][Items/Group]
+     */
+    void requireReload();
+
+    /**
      * 当某项数据有更新，需要界面重新加载时，调用此函数
      */
     void itemUpdated(const ListIndex& index);
@@ -102,7 +109,7 @@ protected:
      * @param insertIndex 从此索引开始插入，即将插入的所有数据项都应与此索引在同一个分组
      * @param count 插入数据项的数量
      */
-    void beginInsertItem(const ListIndex& insertIndex, size_t count);
+    void beginInsertItems(const ListIndex& insertIndex, size_t count);
 
     /**
      * 请确保在插入数据项完成之后调用此函数，这将使 ListView 及时更新。
@@ -110,7 +117,7 @@ protected:
      * 如果此前没有调用 beginInsertItem ，那么对此函数的调用是无效的。
      * 这些接口必须在 UI 线程调用，并且回到事件循环之前必须完成数据更改 (begin* end* 在一次事件循环中成对调用)
      */
-    void endInsertItem();
+    void endInsertItems();
 
     /**
      * 通知 ListView 即将插入分组，此分组中可带有任意数量的数据项。
@@ -140,7 +147,7 @@ protected:
      * @param insertIndex 从此索引开始删除，即将删除的所有数据项都应与此索引在同一个分组
      * @param count 删除数据项的数量，如果 removeIndex.
      */
-    void beginRemoveItem(const ListIndex& removeIndex, size_t count);
+    void beginRemoveItems(const ListIndex& removeIndex, size_t count);
 
     /**
      * 请确保在删除数据项完成之后调用此函数，这将使 ListView 及时更新。
@@ -148,7 +155,7 @@ protected:
      * 如果此前没有调用 beginRemoveItem ，那么对此函数的调用是无效的。
      * 这些接口必须在 UI 线程调用，并且回到事件循环之前必须完成数据更改 (begin* end* 在一次事件循环中成对调用)
      */
-    void endRemoveItem();
+    void endRemoveItems();
 
     /**
      * 通知 ListView 即将删除分组，即删除此分组和其中的所有数据项。
@@ -167,7 +174,6 @@ protected:
      * 这些接口必须在 UI 线程调用，并且回到事件循环之前必须完成数据更改 (begin* end* 在一次事件循环中成对调用)
      */
     void endRemoveGroup();
-
 
 private:
     class ListDataModelPriv* priv;

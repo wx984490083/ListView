@@ -18,7 +18,7 @@ bool ListViewDelegate::canSelectItem(const ListIndex &)
 
 bool ListViewDelegate::isMultipleSelection()
 {
-    return true;
+    return false;
 }
 
 QWidget *ListViewDelegate::headerViewForGroup(int )
