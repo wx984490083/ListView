@@ -143,7 +143,7 @@ void ListView::resizeEvent(QResizeEvent *event)
 
 void ListViewPriv::setup()
 {
-    scrollArea = new QScrollArea(owner);
+    scrollArea = new SmoothScrollArea(owner);
     scrollArea->setAutoFillBackground(false);
     scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     scrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
@@ -279,8 +279,20 @@ void ListViewPriv::scrollToItem(const ListIndex &index)
         return;
     }
 
-    auto y = itemPosition(index);
-    scrollArea->verticalScrollBar()->setValue(y);
+    int targetY;
+    if (loadedItems.empty())
+    {
+        targetY = itemPosition(index, ListIndex(), 0);
+    }
+    else
+    {
+        const auto& item = loadedItems.front();
+        const auto refIndex = item.index;
+        int refY = item.y;
+        targetY = itemPosition(index, refIndex, refY);
+    }
+
+    scrollArea->verticalScrollBar()->setValue(targetY);
 }
 
 void ListViewPriv::scrollToTop()
@@ -345,8 +357,13 @@ void ListViewPriv::itemUpdated(const ListIndex &index)
         // 调整scrollContent 高度
         fixContentSize(false);
 
+        // 如果变动的 item 是最后一个，就直接滚动到最底部
+        if (currentModel->owner->maxIndex() == index)
+        {
+            vs->setValue(vs->maximum());
+        }
         // 如果变动的 item 在 loadedItems 前面，那么可以滚动视图保持视觉不变
-        if (index < loadedItems.begin()->index)
+        else if (index < loadedItems.begin()->index)
         {
             vs->setValue(vs->value() + dh);
         }
@@ -1295,28 +1312,29 @@ int ListViewPriv::headerHeight(int group)
     return result;
 }
 
-int ListViewPriv::itemPosition(const ListIndex &index)
+int ListViewPriv::itemPosition(const ListIndex &index, const ListIndex& refIndex, int refY)
 {
-    // 当前计算方式为从上往下递加
-    // TODO: 如果发现此函数调用频率很高或对UI造成了明显的影响，可建立位置缓存，用于直接搜索结果或加速计算
     int result = 0;
-    int currentHeight = 0;
-    ListIndex currentIndex(0, ListIndex::InvalidItemIndex);
-    while (currentIndex != index)
+    int distance = 0;
+    auto pair = std::minmax(index, refIndex);
+    auto minIndex = pair.first;
+    auto maxIndex = pair.second;
+    while (minIndex != maxIndex)
     {
-        if (index.group > currentIndex.group && currentIndex.item == ListIndex::InvalidItemIndex)
+        if (maxIndex.group > minIndex.group && minIndex.item == ListIndex::InvalidItemIndex)
         {
-            result += groupHeights[currentIndex.group];
-            currentIndex.group++;
+            distance += groupHeights[minIndex.group];
+            minIndex.group++;
         }
         else
         {
-            currentHeight = currentIndex.item == ListIndex::InvalidItemIndex
-                    ? headerHeight(currentIndex.group)
-                    : itemHeights[currentIndex.group][currentIndex.item];
-            result += currentHeight;
-            currentIndex = increaseIndex(currentIndex);
+            auto currentHeight = minIndex.item == ListIndex::InvalidItemIndex
+                    ? headerHeight(minIndex.group)
+                    : itemHeights[minIndex.group][minIndex.item];
+            distance += currentHeight;
+            minIndex = increaseIndex(minIndex);
         }
     }
+    result = index > refIndex ? refY + distance : refY - distance;
     return result;
 }

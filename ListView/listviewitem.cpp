@@ -79,13 +79,17 @@ void ListViewItem::mousePressEvent(QMouseEvent *event)
     priv->pressPos = event->pos();
     priv->pressedButton |= event->button();
     if (event->button() == Qt::LeftButton)
+    {
         setPressed(true);
+    }
 }
 
 void ListViewItem::mouseReleaseEvent(QMouseEvent *event)
 {
     if (event->button() == Qt::LeftButton)
+    {
         setPressed(false);
+    }
 
     auto didPressedTheButton = priv->pressedButton.testFlag(event->button());
     if (didPressedTheButton && rect().contains(event->pos()))

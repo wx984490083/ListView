@@ -2,7 +2,7 @@
 #define LISTVIEW_IMPL_HPP
 
 #include "listview.h"
-#include <QScrollArea>
+#include "smoothscrollarea.h"
 
 class ListViewItemPriv;
 
@@ -49,7 +49,7 @@ private:
         ListViewItemPriv* view;
     };
 
-    QScrollArea* scrollArea;
+    SmoothScrollArea* scrollArea;
     QWidget* scrollContent;
 
     ListDataModelPriv* currentModel = nullptr;
@@ -114,7 +114,7 @@ private:
     // some helper functions
     bool modelNotEmpty();
     int headerHeight(int group);
-    int itemPosition(const ListIndex& index);
+    int itemPosition(const ListIndex& index, const ListIndex &refIndex, int refY);
     ListIndex increaseIndex(const ListIndex& index);
     ListIndex decreaseIndex(const ListIndex& index);
     void scrollWithoutNotify(int dy);

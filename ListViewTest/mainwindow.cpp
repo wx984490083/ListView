@@ -34,16 +34,16 @@ public:
     {
         std::vector<int> insertedItems(count, height);
         auto& groupHeights = heights[group];
-        beginInsertItems(ListIndex(group, item), count);
+        beginInsertItem(ListIndex(group, item), count);
         groupHeights.insert(groupHeights.begin() + item, insertedItems.begin(), insertedItems.end());
-        endInsertItems();
+        endInsertItem();
     }
     void removeItems(int group, int item, int count)
     {
         auto& groupHeights = heights[group];
-        beginRemoveItems(ListIndex(group, item), count);
+        beginRemoveItem(ListIndex(group, item), count);
         groupHeights.erase(groupHeights.begin() + item, groupHeights.begin() + item + count);
-        endRemoveItems();
+        endRemoveItem();
     }
     void insertGroup(int group, int count, int height)
     {
